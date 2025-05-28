@@ -13,6 +13,8 @@ import android.util.Log
 import android.widget.Toast
 import java.nio.charset.Charset
 import java.util.*
+import android.os.Build
+import android.content.Context.RECEIVER_EXPORTED
 
 class USBPrinterService private constructor(private var mHandler: Handler?) {
     private var mContext: Context? = null
@@ -88,7 +90,14 @@ class USBPrinterService private constructor(private var mHandler: Handler?) {
         val filter = IntentFilter(ACTION_USB_PERMISSION).apply {
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
         }
-        mContext!!.registerReceiver(mUsbDeviceReceiver, filter)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {   // API 33+
+            // Allow external (system) broadcasts like UsbManager.ACTION_USB_DEVICE_DETACHED
+            mContext!!.registerReceiver(mUsbDeviceReceiver, filter, RECEIVER_EXPORTED)
+        } else {
+            // Pre-Android-13 behaviour
+            mContext!!.registerReceiver(mUsbDeviceReceiver, filter)
+        }
 
         Log.v(LOG_TAG, "ESC/POS Printer initialized")
     }
