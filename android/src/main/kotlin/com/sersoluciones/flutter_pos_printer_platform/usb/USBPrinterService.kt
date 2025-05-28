@@ -69,16 +69,30 @@ class USBPrinterService private constructor(private var mHandler: Handler?) {
     fun init(reactContext: Context?) {
         mContext = reactContext
         mUSBManager = mContext!!.getSystemService(Context.USB_SERVICE) as UsbManager
-        mPermissionIndent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            PendingIntent.getBroadcast(mContext, 0, Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_MUTABLE)
-        } else {
-            PendingIntent.getBroadcast(mContext, 0, Intent(ACTION_USB_PERMISSION), 0)
+
+        /* -------------- FIX START --------- */
+
+        // Build an explicit + immutable PendingIntent, API-34 compliant
+        val intent = Intent(ACTION_USB_PERMISSION).apply {
+            // make it explicit to this app (not strictly required once immutable,
+            // but a good practice and future-proof)
+            setPackage(mContext!!.packageName)
         }
-        val filter = IntentFilter(ACTION_USB_PERMISSION)
-        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+
+        mPermissionIndent = PendingIntent.getBroadcast(mContext, 0, intent, flags)
+
+        /* --------------  FIX END  --------- */
+
+        val filter = IntentFilter(ACTION_USB_PERMISSION).apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        }
         mContext!!.registerReceiver(mUsbDeviceReceiver, filter)
+
         Log.v(LOG_TAG, "ESC/POS Printer initialized")
     }
+
 
     fun closeConnectionIfExists() {
         if (mUsbDeviceConnection != null) {
